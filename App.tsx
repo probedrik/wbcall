@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InputField from './components/InputField';
 import DisplayField from './components/DisplayField';
 import { SparklesIcon, CalculatorIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ChevronDownIcon } from './components/Icons';
+
+// Type for Telegram WebApp object for better type safety
+declare global {
+    interface Window {
+        Telegram: any;
+    }
+}
 
 // Accordion Component for better layout organization
 const AccordionSection: React.FC<{ 
@@ -69,6 +76,22 @@ const App: React.FC = () => {
         returnToPickupPerLiterCost: 11.5,
     });
 
+    useEffect(() => {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+
+            // Set background to Telegram's theme background color
+            document.body.style.backgroundColor = tg.themeParams.bg_color || '#f1f5f9';
+            document.body.style.color = tg.themeParams.text_color || '#1e293b';
+
+            // Show a main button to close the app
+            tg.MainButton.setText('Закрыть калькулятор');
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => tg.close());
+        }
+    }, []);
+
     const handleInputChange = (name: keyof typeof inputs, value: number) => {
         setInputs(prev => ({ ...prev, [name]: value }));
     };
@@ -106,7 +129,7 @@ const App: React.FC = () => {
     const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8">
             <div className="w-full max-w-4xl mx-auto">
                 <header className="text-center">
                     <h1 className="text-4xl sm:text-5xl font-bold text-slate-800 flex items-center justify-center gap-3">
