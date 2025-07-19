@@ -1,0 +1,6 @@
+{
+  "name": "Copy of Wildberries Profit Calculator4",
+  "description": "A calculator to estimate profit from selling on the Wildberries marketplace, based on a user-provided spreadsheet. It allows users to input various parameters like price, cost, dimensions, and commission rates to see a detailed breakdown of costs and the final net profit.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
