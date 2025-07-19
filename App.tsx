@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import InputField from './components/InputField';
 import DisplayField from './components/DisplayField';
-import { SparklesIcon, CalculatorIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ChevronDownIcon } from './components/Icons';
+import { SparklesIcon, CalculatorIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, ChevronDownIcon, DownloadIcon } from './components/Icons';
 
 // Type for Telegram WebApp object for better type safety
 declare global {
@@ -127,6 +128,58 @@ const App: React.FC = () => {
     const profitMargin = inputs.price > 0 ? (totalProfit / inputs.price) * 100 : 0;
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    
+    const formatNumberForCsv = (value: number) => value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const handleDownloadCsv = () => {
+        const dataForCsv = [
+            { category: 'Параметры', parameter: 'Цена', value: inputs.price, unit: '₽' },
+            { category: 'Параметры', parameter: 'Скидка СПП', value: inputs.sppDiscountPercent, unit: '%' },
+            { category: 'Параметры', parameter: 'Скидка кошелек', value: inputs.walletDiscountPercent, unit: '%' },
+            { category: 'Параметры', parameter: 'Комиссия', value: inputs.commissionPercent, unit: '%' },
+            { category: 'Параметры', parameter: 'Процент выкупа', value: inputs.buyoutPercent, unit: '%' },
+            { category: 'Параметры', parameter: 'Возврат от клиента', value: inputs.returnFromCustomerCost, unit: '₽' },
+            { category: 'Финансы', parameter: 'Эквайринг', value: inputs.acquiringPercent, unit: '%' },
+            { category: 'Финансы', parameter: 'Налог', value: inputs.taxPercent, unit: '%' },
+            { category: 'Параметры', parameter: 'Длина', value: inputs.length, unit: 'см' },
+            { category: 'Параметры', parameter: 'Ширина', value: inputs.width, unit: 'см' },
+            { category: 'Параметры', parameter: 'Высота', value: inputs.height, unit: 'см' },
+            { category: 'Результат', parameter: 'Объем товара', value: volume, unit: 'л' },
+            {}, // Empty row
+            { category: 'Результат', parameter: 'Цена для покупателя', value: priceOnWB, unit: '₽' },
+            { category: 'Результат', parameter: 'Комиссия', value: commissionValue, unit: '₽' },
+            { category: 'Результат', parameter: 'Эквайринг', value: acquiringValue, unit: '₽' },
+            { category: 'Результат', parameter: 'Налог (сумма)', value: taxValue, unit: '₽' },
+            { category: 'Результат', parameter: 'Общая логистика с % выкупа', value: totalLogistics, unit: '₽' },
+            { category: 'Параметры', parameter: 'Себестоимость', value: inputs.costPrice, unit: '₽' },
+            { category: 'Результат', parameter: 'Чистая прибыль', value: totalProfit, unit: '₽' },
+            { category: 'Результат', parameter: 'Маржинальность', value: profitMargin, unit: '%' },
+        ];
+
+        const header = ['Категория', 'Параметр', 'Значение', 'Единица'];
+        const csvRows = [header.join(';')];
+
+        dataForCsv.forEach(row => {
+            if (!row.category) {
+                csvRows.push(';;;');
+                return;
+            }
+            const valueStr = row.value !== undefined ? formatNumberForCsv(row.value) : '';
+            const rowData = [row.category, row.parameter, valueStr, row.unit].join(';');
+            csvRows.push(rowData);
+        });
+        
+        const csvContent = "\uFEFF" + csvRows.join('\n'); // Add BOM for Excel compatibility with Cyrillic
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'wildberries_calculation.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8">
@@ -196,18 +249,26 @@ const App: React.FC = () => {
                                             <InputField label="Высота" name="height" value={inputs.height} onChange={handleInputChange} unit="см" />
                                             <DisplayField label="Объем товара" value={volume} unit="л" bold />
                                             <hr className="my-3 border-slate-200" />
-                                            <h4 className="text-sm font-semibold text-slate-600 pt-1">Расчет логистики (за 1 шт)</h4>
-                                            <div className="space-y-3 mt-2">
-                                                <DisplayField label="Логистика при продаже" value={logisticsOnSale} format={formatCurrency} />
+                                            <h4 className="text-base font-bold text-slate-700 pt-2">Расчет логистики (за 1 шт)</h4>
+                                            
+                                            <div className="mt-4 space-y-4">
+                                                {/* Sale Section */}
+                                                <div>
+                                                    <h5 className="text-sm font-bold text-slate-800 mb-2">Логистика при продаже</h5>
+                                                    <div className="border-b border-slate-200">
+                                                        <DisplayField label="К клиенту при продаже" value={logisticsOnSale} format={formatCurrency} hasBorder={false} />
+                                                    </div>
+                                                </div>
                                                 
-                                                <div className="!mt-4 pt-4 border-t border-slate-200">
-                                                    <h5 className="text-sm font-semibold text-slate-600 mb-2">Затраты при отмене / возврате</h5>
+                                                {/* Return Section */}
+                                                <div className="pt-4 border-t border-slate-200">
+                                                    <h5 className="text-sm font-bold text-slate-800 mb-2">Логистика при отмене / возврате</h5>
                                                     <div className="space-y-3 pl-3 border-l-2 border-indigo-200">
-                                                        <DisplayField label="Доставка до клиента" value={toCustomerOnCancel} format={formatCurrency} />
-                                                        <InputField label="Возврат от клиента" name="returnFromCustomerCost" value={inputs.returnFromCustomerCost} onChange={handleInputChange} unit="₽" />
-                                                        <DisplayField label="Возврат на ПВЗ" value={returnToPickupOnCancel} format={formatCurrency} />
-                                                        <div className="pt-2 border-t border-slate-200">
-                                                            <DisplayField label="Итого на отмену" value={logisticsOnCancel} format={formatCurrency} bold hasBorder={false} />
+                                                        <DisplayField label="К клиенту при отмене" value={toCustomerOnCancel} format={formatCurrency} />
+                                                        <InputField label="От клиента при отмене" name="returnFromCustomerCost" value={inputs.returnFromCustomerCost} onChange={handleInputChange} unit="₽" />
+                                                        <DisplayField label="Возврат КГТ продавцу на ПВЗ" value={returnToPickupOnCancel} format={formatCurrency} />
+                                                        <div className="pt-2 mt-2 border-t border-slate-200">
+                                                            <DisplayField label="Итого при отмене" value={logisticsOnCancel} format={formatCurrency} bold hasBorder={false} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -262,6 +323,16 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                         </AccordionSection>
+                    </div>
+
+                    <div className="mt-8 text-center">
+                        <button 
+                            onClick={handleDownloadCsv}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md"
+                        >
+                            <DownloadIcon className="w-4 h-4" />
+                            Выгрузить расчет в CSV
+                        </button>
                     </div>
 
                     <div className="text-xs text-slate-400 text-center pt-8">
